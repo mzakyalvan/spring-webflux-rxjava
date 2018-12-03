@@ -10,6 +10,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.concurrent.TimeUnit;
+
 @SpringBootApplication
 public class SampleApplication {
 
@@ -34,13 +36,25 @@ public class SampleApplication {
 	@RestController
 	@RequestMapping("/tasks")
 	static class TaskController {
-		@ResponseStatus(code = HttpStatus.CREATED)
 		@PostMapping("/dummy")
-		Completable start() {
+		@ResponseStatus(code = HttpStatus.CREATED)
+		Completable startDummy() {
 			LOGGER.info("TaskController::dummy");
 			return Single.just("Dummy Task")
 					.ignoreElement()
 					.doOnComplete(() -> LOGGER.info("Task submitted..."))
+					.subscribeOn(Schedulers.io());
+		}
+
+		@PostMapping("/long")
+		@ResponseStatus(code = HttpStatus.CREATED)
+		Completable longRunning() {
+			return Single.just("Long Running")
+					.doOnSuccess(s -> LOGGER.info("Start long running task : {}", s))
+					.ignoreElement()
+					.delay(11, TimeUnit.SECONDS)
+					.doOnComplete(() -> LOGGER.info("Finish long running task"))
+					.doOnError(throwable -> LOGGER.error("Error thrown on long running task"))
 					.subscribeOn(Schedulers.io());
 		}
 	}
